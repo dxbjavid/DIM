@@ -162,6 +162,18 @@ export default (env: Env) => {
       hints: false,
     },
 
+    // On Windows, rspack's module resolution registers a phantom "missing
+    // dependency" for the drive-root package.json (e.g. "C:package.json") while
+    // walking up the tree. The watcher flags it as removed on the first tick,
+    // forcing a spurious recompile immediately after startup. That extra compile
+    // ships an HMR update that a warm browser applies mid-first-load, which can
+    // fail with "factory is undefined" across split chunks (a manual reload
+    // recovers). Ignore the phantom (and node_modules) so the initial build is
+    // the only build.
+    watchOptions: {
+      ignored: /[\\/]node_modules[\\/]|^[a-zA-Z]:[\\/]?package\.json$/,
+    },
+
     optimization: {
       // We always want the chunk name, otherwise it's just numbers
       // chunkIds: 'named',

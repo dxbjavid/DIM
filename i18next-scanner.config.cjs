@@ -2,6 +2,44 @@ const fs = require('fs');
 const path = require('path');
 const typescript = require('typescript');
 
+/**
+ * Load the shared key registry from the TS source so there's a single source of
+ * truth for the keys that used to be built dynamically. The module is pure data
+ * (only type-only imports, which are erased), so we can transpile and evaluate it
+ * here without pulling in app runtime code.
+ */
+function loadI18nRegistry() {
+  const src = fs.readFileSync(path.resolve(__dirname, 'src/app/i18n/i18n-keys.ts'), 'utf8');
+  const { outputText } = typescript.transpileModule(src, {
+    compilerOptions: {
+      module: typescript.ModuleKind.CommonJS,
+      target: typescript.ScriptTarget.ES2019,
+    },
+  });
+  const mod = { exports: {} };
+  new Function('module', 'exports', 'require', outputText)(mod, mod.exports, require);
+  return mod.exports;
+}
+
+const { I18N_KEYS, I18N_CONTEXTS } = loadI18nRegistry();
+
+// Emit `Prefix.Value` for every registered domain (single source: I18N_KEYS),
+// replacing the old `metadata: { keys }` dynamic-key inference. Done from the
+// transform (once) rather than a custom flush, because a custom flush would
+// replace i18next-scanner's default resource-writing.
+let registryEmitted = false;
+function emitRegistryKeys(parser) {
+  if (registryEmitted) {
+    return;
+  }
+  registryEmitted = true;
+  for (const [prefix, values] of Object.entries(I18N_KEYS)) {
+    for (const value of values) {
+      parser.set(`${prefix}.${value}`);
+    }
+  }
+}
+
 module.exports = {
   input: ['src/app/**/*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}', 'src/browsercheck.js'],
   // build/i18n.cjs points this at a temp dir so it can diff the result and only
@@ -26,67 +64,40 @@ module.exports = {
     context: true,
     contextFallback: true,
     contextDefaultValues: ['male', 'female'],
-    allowDynamicKeys: true,
   },
-  transform: function customTransform(file, enc, done) {
-    'use strict';
-    const tsExts = ['.ts', '.tsx'];
+  transform(file, enc, done) {
     const parser = this.parser;
+    emitRegistryKeys(parser);
 
     const { base, ext } = path.parse(file.path);
     let content = fs.readFileSync(file.path, enc);
-    const isTs = tsExts.includes(ext) && !base.includes('.d.ts');
+    const isTs = ['.ts', '.tsx'].includes(ext) && !base.includes('.d.ts');
 
     if (isTs) {
-      const { outputText } = typescript.transpileModule(content, {
-        compilerOptions: {
-          target: 'es2018',
-          jsx: 'preserve',
-        },
+      content = typescript.transpileModule(content, {
+        compilerOptions: { target: 'es2018', jsx: 'preserve' },
         fileName: path.basename(file.path),
-      });
-      content = outputText;
+      }).outputText;
     }
 
-    // prettier-ignore
-    const contexts = {
-      compact: ['compact'],
-      max: ['Max'],
-    };
-
-    // prettier-ignore
-    const keys = {
-      buckets: { list: ['General', 'Inventory', 'Postmaster', 'Progress', 'Unknown'] },
-      difficulty: { list: ['Normal', 'Hard'] },
-      progress: { list: ['Bounties', 'Items', 'Quests'] },
-      sockets: { list: ['Mod', 'Ability', 'Shader', 'Ornament', 'Fragment', 'Aspect', 'Projection', 'Transmat', 'Super'] }
-    };
-    const dimTransformer = (key, options) => {
-      if (options.metadata?.context) {
-        // Add context based on metadata
+    const transformer = (key, options) => {
+      const contexts = I18N_CONTEXTS[key];
+      if (contexts) {
+        // We expand these context variants explicitly from the registry. Drop the
+        // (runtime-dynamic) context value so the scanner's native male/female
+        // expansion doesn't also kick in, and pass the call's options through so
+        // plural forms (count) still expand for each variant.
         delete options.context;
-        const context = contexts[options.metadata?.context];
         parser.set(key, options);
-        for (let i = 0; i < context?.length; i++) {
-          parser.set(`${key}${parser.options.contextSeparator}${context[i]}`, options);
+        for (const ctx of contexts) {
+          parser.set(`${key}${parser.options.contextSeparator}${ctx}`, options);
         }
-      }
-
-      if (options.metadata?.keys) {
-        // Add keys based on metadata (dynamic or otherwise)
-        const list = keys[options.metadata?.keys].list;
-        for (let i = 0; i < list?.length; i++) {
-          parser.set(`${key}${list[i]}`, options);
-        }
-      }
-
-      // Add all other non-metadata related keys w/ default options
-      if (!options.metadata) {
+      } else {
         parser.set(key, options);
       }
     };
 
-    parser.parseFuncFromString(content, { list: ['t', 'tl', 'DimError'] }, dimTransformer);
+    parser.parseFuncFromString(content, { list: ['t', 'tl', 'DimError'] }, transformer);
 
     done();
   },

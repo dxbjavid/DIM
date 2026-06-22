@@ -1,4 +1,5 @@
 import { itemPop } from 'app/dim-ui/scroll';
+import { i18nKey } from 'app/i18n/i18n-keys';
 import { t } from 'app/i18next-t';
 import { BucketSortType, InventoryBucket, InventoryBuckets } from 'app/inventory/inventory-buckets';
 import { locateItem$ } from 'app/inventory/locate-item';
@@ -169,7 +170,7 @@ function CollapsibleContainer({
 
   return (
     <InventoryCollapsibleTitle
-      title={t(`Bucket.${category as BucketSortType}`, { metadata: { keys: 'buckets' } })}
+      title={t(i18nKey('Bucket', category as BucketSortType))}
       sectionId={category}
       stores={stores}
     >

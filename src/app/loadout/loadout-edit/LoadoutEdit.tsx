@@ -2,6 +2,7 @@ import { LoadoutParameters } from '@destinyitemmanager/dim-api-types';
 import { D1ManifestDefinitions } from 'app/destiny1/d1-definitions';
 import { D2ManifestDefinitions } from 'app/destiny2/d2-definitions';
 import CheckButton from 'app/dim-ui/CheckButton';
+import { i18nKey } from 'app/i18n/i18n-keys';
 import { t } from 'app/i18next-t';
 import { D2BucketCategory, InventoryBucket } from 'app/inventory/inventory-buckets';
 import { DimItem, PluggableInventoryItemDefinition } from 'app/inventory/item-types';
@@ -330,7 +331,7 @@ function LoadoutEditCategorySection({
   return (
     <LoadoutEditSection
       className={styles.section}
-      title={t(`Bucket.${category}`, { metadata: { keys: 'buckets' } })}
+      title={t(i18nKey('Bucket', category))}
       onClear={() => handleClearCategory(category)}
       onRandomize={() => handleRandomizeCategory(allItems, category, searchFilter)}
       hasRandomizeQuery={searchFilter !== stubTrue}

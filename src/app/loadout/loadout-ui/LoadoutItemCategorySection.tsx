@@ -1,3 +1,4 @@
+import { i18nKey } from 'app/i18n/i18n-keys';
 import { t } from 'app/i18next-t';
 import ConnectedInventoryItem from 'app/inventory/ConnectedInventoryItem';
 import DraggableInventoryItem from 'app/inventory/DraggableInventoryItem';
@@ -137,7 +138,7 @@ export default function LoadoutItemCategorySection({
       ) : (
         <>
           <div className={clsx(styles.placeholder, `category-${category}`)}>
-            {t(`Bucket.${category}`, { metadata: { keys: 'buckets' } })}
+            {t(i18nKey('Bucket', category))}
           </div>
         </>
       )}

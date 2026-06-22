@@ -1,3 +1,4 @@
+import { i18nKey } from 'app/i18n/i18n-keys';
 import { t } from 'app/i18next-t';
 import { BucketSortType, InventoryBuckets } from 'app/inventory/inventory-buckets';
 import clsx from 'clsx';
@@ -25,7 +26,7 @@ export default function CategoryStrip({
               onClick={() => onCategorySelected(category)}
               className={clsx({ [styles.selected]: category === selectedCategoryId })}
             >
-              {t(`Bucket.${category as BucketSortType}`, { metadata: { keys: 'buckets' } })}
+              {t(i18nKey('Bucket', category as BucketSortType))}
             </div>
           ),
       )}

@@ -1,6 +1,7 @@
 import CharacterTile from 'app/character-tile/CharacterTile';
 import CharacterSelect from 'app/dim-ui/CharacterSelect';
 import ShowPageLoading from 'app/dim-ui/ShowPageLoading';
+import { i18nKey } from 'app/i18n/i18n-keys';
 import { t } from 'app/i18next-t';
 import { useLoadStores } from 'app/inventory/store/hooks';
 import { useD1Definitions } from 'app/manifest/selectors';
@@ -185,9 +186,7 @@ function useActivities(defs: D1ManifestDefinitions | undefined, characters: D1St
         tier.activityData.recommendedLight === 390
           ? '390'
           : tier.tierDisplayName
-            ? t(`Activities.${tier.tierDisplayName}`, {
-                metadata: { keys: 'difficulty' },
-              })
+            ? t(i18nKey('Activities', tier.tierDisplayName))
             : tierDef.activityName;
 
       const characters =
